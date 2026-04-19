@@ -1,0 +1,26 @@
+---
+title: "data_cleaning"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+```{r}
+df <- read_csv("/cloud/project/data/tPBM_data.csv")
+
+df_clean <- df |>
+  #drop exact duplicate rows
+  distinct() 
+# drop near- duplicates: same authors + year + condition + sample size 
+  distinct(author, year, condition, sample, .keep_all= TRUE) |>
+    mutate(
+      year = as.integer(year),
+      wavelength_nm = as.numeric(wavelength_nm),
+      session_duration_min = as.numeric(session_duration_min),
+      session_count= as.numeric(session_count),
+      sample = as.integer(sample),
+      #normalize condition labels 
+    )
+```
+
