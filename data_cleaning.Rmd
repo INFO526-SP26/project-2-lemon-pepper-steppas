@@ -20,7 +20,61 @@ df_clean <- df |>
       session_duration_min = as.numeric(session_duration_min),
       session_count= as.numeric(session_count),
       sample = as.integer(sample),
-      #normalize condition labels 
-    )
+      application = str_replace(application, "transcrainial", "transcranial"),
+      population_type= str_to_lower(str_trim(population_type)),
+      blinding= if_else(is.na(blinding) | blinding =="", "not reported", blinding), 
+      outcome_direction = str_to_lower(str_trim(outcome_direction)),
+      study_design= str_to_title(str_trim(study_design)),
+      source = str_trim(str_remove(source, " - PubMed$| -PMC$| - ScienceDirect$")),
+      condition= str_replace_all(condition, "/", ";"),
+      outcome_cat= str_replace_all(outcome_cat, "/", ";")
+    ) |>
+    
+    #split conditions into separate rows 
+    separate_longer_delim(condition, delim = ";") |>
+  mutate(condition = str_trim(condition)) |>
+  mutate(condition = case_when(
+    str_detect(condition, regex("alzheimer|dementia.*alzheimer|alzheimer.*dementia", ignore_case = TRUE)) ~ "Alzheimer's",
+    str_detect(condition, regex("dementia", ignore_case = TRUE)) ~ "Dementia",
+    str_detect(condition, regex("mild cognitive impairment|^mci$", ignore_case = TRUE)) ~ "Mild Cognitive Impairment",
+    str_detect(condition, regex("major depress|^mdd$|^depression$", ignore_case = TRUE)) ~ "Major Depressive Disorder",
+    str_detect(condition, regex("post.stroke depression", ignore_case = TRUE)) ~ "Post-Stroke Depression",
+    str_detect(condition, regex("traumatic brain injury|brain injury|^tbi$", ignore_case = TRUE)) ~ "Brain Injury",
+    str_detect(condition, regex("parkinson", ignore_case = TRUE)) ~ "Parkinson's Disease",
+    str_detect(condition, regex("autism spectrum|^asd$", ignore_case = TRUE)) ~ "Autism Spectrum Disorder",
+    str_detect(condition, regex("^adhd$|attention deficit", ignore_case = TRUE)) ~ "ADHD",
+    str_detect(condition, regex("seasonal affective", ignore_case = TRUE)) ~ "Seasonal Affective Disorder",
+    str_detect(condition, regex("opioid use disorder", ignore_case = TRUE)) ~ "Opioid Use Disorder",
+    str_detect(condition, regex("bipolar", ignore_case = TRUE)) ~ "Bipolar Disorder",
+    str_detect(condition, regex("anxiety", ignore_case = TRUE)) ~ "Anxiety Disorder",
+    str_detect(condition, regex("insomnia|poor sleep", ignore_case = TRUE)) ~ "Insomnia",
+    str_detect(condition, regex("fibromyalgia", ignore_case = TRUE)) ~ "Fibromyalgia",
+    str_detect(condition, regex("schizophrenia", ignore_case = TRUE)) ~ "Schizophrenia",
+    str_detect(condition, regex("cognitive dysfunction|brain fog|post.covid", ignore_case = TRUE)) ~ "Cognitive Dysfunction",
+    str_detect(condition, regex("sexual dysfunction", ignore_case = TRUE)) ~ "Sexual Dysfunction",
+    str_detect(condition, regex("alcohol use", ignore_case = TRUE)) ~ "Alcohol Use Disorder",
+    str_detect(condition, regex("chronic pain|ptsd|poor sleep|mood", ignore_case = TRUE)) ~ "Other Clinical",
+    str_detect(condition, regex("natural aging|aging|cognitive decline", ignore_case = TRUE)) ~ "Natural Aging",
+    str_detect(condition, regex("healthy|non.clinical", ignore_case = TRUE)) ~ "Healthy",
+    TRUE ~ condition
+  )) |>
+    
+    #split outcome_cat into separate rows
+    #[CODE HERE]
+    
+    
+    |>
+    #selecting the final dataset
+    select(
+      study_id, year, author, condition, population_type, population_age,
+      study_design, application,
+      wavelength_nm, session_duration_min, session_count,
+      blinding, control_type,
+      outcome_cat, outcome_direction,
+      sample, source, publisher
+  ) |>
+  arrange(year, author, condition, outcome_cat)
+
+write_csv(df_clean, "tpbm_clean.csv")
 ```
 
