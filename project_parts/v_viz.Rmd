@@ -1,0 +1,8 @@
+---
+title: "v_viz"
+output: html_document
+---
+
+1. Bar chart showing the number of studies by mental health condition
+2. Heatmap of condition vs. evidence strength, highlighting where research is robust vs. sparse
+3. Alluvial diagram showing the flow from mental health condition → study design → outcome direction (to be used only if it can be kept readable and uncluttered)
