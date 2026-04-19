@@ -1,0 +1,8 @@
+---
+title: "levi_viz"
+output: html_document
+---
+
+1. Stacked bar chart showing outcome direction (positive, mixed, inconclusive) broken down by condition — note: this would likely replace the simple bar chart above, not complement it, as it contains that information and more
+2. Timeline plot showing how research activity across mental health conditions has changed over time
+3. Dot plot or bubble chart comparing sample sizes across study designs and conditions
