@@ -28,13 +28,16 @@ df_clean <- df |>
       outcome_direction = str_to_lower(str_trim(outcome_direction)),
       study_design= str_to_title(str_trim(study_design)),
       source = str_trim(str_remove(source, " - PubMed$| -PMC$| - ScienceDirect$")),
-      condition= str_replace_all(condition, "/", ";"),
-      outcome_cat= str_replace_all(outcome_cat, "/", ";")
+      condition= str_replace_all(condition, "[,/]", ";"), #normalize all delims to ; b4 splitting 
+      outcome_cat= str_replace_all(outcome_cat, "[,/]", ";"),
+      #fix typo 
+      condition = str_replace_all(condition, regex("opoid", ignore_case = TRUE), "Opioid")
     ) |>
     
     #split conditions into separate rows 
     separate_longer_delim(condition, delim = ";") |>
   mutate(condition = str_trim(condition)) |>
+  filter(condition != "", !is.na(condition)) |> #added empty string filters to catch blank rows created by splitting
   mutate(condition = case_when(
     str_detect(condition, regex("alzheimer|dementia.*alzheimer|alzheimer.*dementia", ignore_case = TRUE)) ~ "Alzheimer's",
     str_detect(condition, regex("dementia", ignore_case = TRUE)) ~ "Dementia",
@@ -55,16 +58,22 @@ df_clean <- df |>
     str_detect(condition, regex("cognitive dysfunction|brain fog|post.covid", ignore_case = TRUE)) ~ "Cognitive Dysfunction",
     str_detect(condition, regex("sexual dysfunction", ignore_case = TRUE)) ~ "Sexual Dysfunction",
     str_detect(condition, regex("alcohol use", ignore_case = TRUE)) ~ "Alcohol Use Disorder",
-    str_detect(condition, regex("chronic pain|ptsd|poor sleep|mood", ignore_case = TRUE)) ~ "Other Clinical",
     str_detect(condition, regex("natural aging|aging|cognitive decline", ignore_case = TRUE)) ~ "Natural Aging",
     str_detect(condition, regex("healthy|non.clinical", ignore_case = TRUE)) ~ "Healthy",
     str_detect(condition, regex("Obsessive-Compulsive Disorder", ignore_case = TRUE)) ~ "OCD",
+    str_detect(condition, regex("^ptsd$|post.traumatic", ignore_case = TRUE)) ~ "PTSD",
+    str_detect(condition, regex("chronic pain|neuropathic pain", ignore_case = TRUE)) ~ "Chronic Pain",
+    #dropping mood as condition
+    str_detect(condition, regex("^mood$", ignore_case = TRUE)) ~ NA_character_,
     TRUE ~ condition
   )) |>
+  
+  distinct(study_id, condition, .keep_all = TRUE) |> #dedup after condition split
     
     #split outcome_cat into separate rows
     separate_longer_delim(outcome_cat, delim = ";") |>
     mutate(outcome_cat = str_trim(outcome_cat)) |>
+  filter(outcome_cat != "", !is.na(outcome_cat)) |> #added empty string filters to catch blank rows
     mutate(outcome_cat = tools::toTitleCase(tolower(outcome_cat))) |>
   mutate(outcome_cat = case_when(
     str_detect(outcome_cat, regex("ptsd Symptoms", ignore_case = TRUE)) ~ "PTSD Symptoms",
@@ -77,12 +86,12 @@ df_clean <- df |>
     str_detect(outcome_cat, regex("brain hemodynamics|cerebral oxygenation", ignore_case = TRUE)) ~ "Brain Hemodynamics",
     str_detect(outcome_cat, regex("social behaivor", ignore_case = TRUE)) ~ "Social Behavior",
     str_detect(outcome_cat, regex("cognitive function|executive function", ignore_case = TRUE)) ~ "Cognitive Function",
-    TRUE ~ outcome_cat))
-
-unique(df_clean$outcome_cat)
-unique(df_clean$condition)
-
-#|>
+    TRUE ~ outcome_cat))|>
+  
+  filter(!is.na(condition)) |> #this will drop the NA columns where mood was 
+  
+  distinct(study_id, condition, outcome_cat, .keep_all = TRUE) |> # dedupe after outcome_cat split
+  
     #selecting the final dataset
     select(
       study_id, year, author, condition, population_type, population_age,
@@ -94,6 +103,25 @@ unique(df_clean$condition)
   ) |>
   arrange(year, author, condition, outcome_cat)
 
-write_csv(df_clean, "tpbm_clean.csv")
+# write_csv(df_clean, "tpbm_clean.csv") #uncomment this if you want to write a new csv with the cleaned, deduped data
+```
+
+Viewing clean dataset
+
+```{r}
+view(df_clean)
+```
+
+Viewing unique values: 
+```{r}
+unique(df_clean$condition)
+unique(df_clean$outcome_cat)
+```
+
+Run this cell below to check for each unique combination of study_id + condition + outcome_cat appearing exactly once. If it returns 0, it is clean and deduped. 
+```{r}
+df_clean |>
+  count(study_id, condition, outcome_cat) |>
+  filter(n > 1)
 ```
 
