@@ -5,13 +5,15 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+library(dplyr)
 ```
+
 ```{r}
 df <- read_csv("/cloud/project/data/tPBM_data.csv")
 
 df_clean <- df |>
   #drop exact duplicate rows
-  distinct() 
+  distinct() |>
 # drop near- duplicates: same authors + year + condition + sample size 
   distinct(author, year, condition, sample, .keep_all= TRUE) |>
     mutate(
@@ -60,10 +62,25 @@ df_clean <- df |>
   )) |>
     
     #split outcome_cat into separate rows
-    #[CODE HERE]
-    
-    
-    |>
+    separate_longer_delim(outcome_cat, delim = ";") |>
+    mutate(outcome_cat = str_trim(outcome_cat)) |>
+    mutate(outcome_cat = tools::toTitleCase(tolower(outcome_cat))) |>
+  mutate(outcome_cat = case_when(
+    str_detect(outcome_cat, regex("ptsd Symptoms", ignore_case = TRUE)) ~ "PTSD Symptoms",
+    str_detect(outcome_cat, regex("eeg|brain oscillations", ignore_case = TRUE)) ~ "Brain Oscillations",
+    str_detect(outcome_cat, regex("ocd symptoms", ignore_case = TRUE)) ~ "OCD Symptoms",
+    str_detect(outcome_cat, regex("adhd symptoms", ignore_case = TRUE)) ~ "ADHD Symptoms",
+    str_detect(outcome_cat, regex("memory|visual working memory|working memory", ignore_case = TRUE)) ~ "Memory",
+    str_detect(outcome_cat, regex("sleep quality|daytime sleepiness|wakefulness", ignore_case = TRUE)) ~ "Sleep",
+    str_detect(outcome_cat, regex("opioid craving|addiction|drug cravings", ignore_case = TRUE)) ~ "Addiction/Cravings",
+    str_detect(outcome_cat, regex("brain hemodynamics|cerebral oxygenation", ignore_case = TRUE)) ~ "Brain Hemodynamics",
+    str_detect(outcome_cat, regex("social behaivor", ignore_case = TRUE)) ~ "Social Behavior",
+    str_detect(outcome_cat, regex("cognitive function|executive function", ignore_case = TRUE)) ~ "Cognitive Function",
+    TRUE ~ outcome_cat))
+
+unique(df_clean$outcome_cat)
+
+#|>
     #selecting the final dataset
     select(
       study_id, year, author, condition, population_type, population_age,
