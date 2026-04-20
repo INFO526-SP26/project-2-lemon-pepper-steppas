@@ -42,7 +42,7 @@ df_clean <- df |>
     str_detect(condition, regex("major depress|^mdd$|^depression$", ignore_case = TRUE)) ~ "Major Depressive Disorder",
     str_detect(condition, regex("post.stroke depression", ignore_case = TRUE)) ~ "Post-Stroke Depression",
     str_detect(condition, regex("traumatic brain injury|brain injury|^tbi$", ignore_case = TRUE)) ~ "Brain Injury",
-    str_detect(condition, regex("parkinson", ignore_case = TRUE)) ~ "Parkinson's Disease",
+    str_detect(condition, regex("parkinson", ignore_case = TRUE)) ~ "Parkinson's",
     str_detect(condition, regex("autism spectrum|^asd$", ignore_case = TRUE)) ~ "Autism Spectrum Disorder",
     str_detect(condition, regex("^adhd$|attention deficit", ignore_case = TRUE)) ~ "ADHD",
     str_detect(condition, regex("seasonal affective", ignore_case = TRUE)) ~ "Seasonal Affective Disorder",
@@ -79,6 +79,7 @@ df_clean <- df |>
     TRUE ~ outcome_cat))
 
 unique(df_clean$outcome_cat)
+unique(df_clean$condition)
 
 #|>
     #selecting the final dataset
