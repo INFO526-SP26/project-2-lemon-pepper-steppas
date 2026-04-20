@@ -46,7 +46,7 @@ df_clean <- df |>
     str_detect(condition, regex("autism spectrum|^asd$", ignore_case = TRUE)) ~ "Autism Spectrum Disorder",
     str_detect(condition, regex("^adhd$|attention deficit", ignore_case = TRUE)) ~ "ADHD",
     str_detect(condition, regex("seasonal affective", ignore_case = TRUE)) ~ "Seasonal Affective Disorder",
-    str_detect(condition, regex("opioid use disorder", ignore_case = TRUE)) ~ "Opioid Use Disorder",
+    str_detect(condition, regex("opioid use disorder|opoid use disorder|opiod craving", ignore_case = TRUE)) ~ "Opioid Use Disorder",
     str_detect(condition, regex("bipolar", ignore_case = TRUE)) ~ "Bipolar Disorder",
     str_detect(condition, regex("anxiety", ignore_case = TRUE)) ~ "Anxiety Disorder",
     str_detect(condition, regex("insomnia|poor sleep", ignore_case = TRUE)) ~ "Insomnia",
@@ -58,6 +58,7 @@ df_clean <- df |>
     str_detect(condition, regex("chronic pain|ptsd|poor sleep|mood", ignore_case = TRUE)) ~ "Other Clinical",
     str_detect(condition, regex("natural aging|aging|cognitive decline", ignore_case = TRUE)) ~ "Natural Aging",
     str_detect(condition, regex("healthy|non.clinical", ignore_case = TRUE)) ~ "Healthy",
+    str_detect(condition, regex("Obsessive-Compulsive Disorder", ignore_case = TRUE)) ~ "OCD",
     TRUE ~ condition
   )) |>
     
