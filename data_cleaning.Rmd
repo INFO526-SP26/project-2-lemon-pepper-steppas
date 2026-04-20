@@ -103,7 +103,7 @@ df_clean <- df |>
   ) |>
   arrange(year, author, condition, outcome_cat)
 
-# write_csv(df_clean, "tpbm_clean.csv") #uncomment this if you want to write a new csv with the cleaned, deduped data
+write_csv(df_clean, "tpbm_clean.csv")
 ```
 
 Viewing clean dataset
