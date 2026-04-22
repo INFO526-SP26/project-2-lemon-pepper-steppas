@@ -6,3 +6,170 @@ output: html_document
 1. Bar chart showing the number of studies by mental health condition
 2. Heatmap of condition vs. evidence strength, highlighting where research is robust vs. sparse
 3. Alluvial diagram showing the flow from mental health condition → study design → outcome direction (to be used only if it can be kept readable and uncluttered)
+
+```{r}
+library(dplyr)
+library(forcats)
+library(stringr)
+library(plotly)
+library(tidyverse)
+
+```
+
+Prepping the data for visualizing
+
+```{r}
+library(tidyverse)
+library(plotly)
+library(forcats)
+library(stringr)
+
+# df_clean <- read_csv("tpbm_clean.csv")
+
+studies <- df_clean %>%
+  distinct(study_id, condition, .keep_all = TRUE)
+
+pal_direction <- c(
+  "positive"     = "#2a7f62",
+  "mixed"        = "#e09b3d",
+  "inconclusive" = "#7f8c8d",
+  "negative"     = "#c0392b"
+)
+```
+
+Stacked Bar Chart (conditions × outcome direction)
+
+The stacked bar chart shows how many studies exist for each condition and how their results break down by outcome direction. Each horizontal bar represents a condition, and the total length reflects the total number of studies on that condition. The colored segments within each bar show how many of those studies reported positive, mixed, inconclusive, or negative results.
+```{r}
+d_bar <- studies %>%
+  count(condition, outcome_direction) %>%
+  mutate(condition = fct_reorder(condition, n, sum))
+
+dirs <- c("positive", "mixed", "inconclusive", "negative")
+
+p_bar <- plot_ly(type = "bar", orientation = "h")
+
+for (dir in dirs) {
+  sub <- d_bar %>% filter(outcome_direction == dir)
+  if (nrow(sub) == 0) next
+  
+  p_bar <- p_bar %>% add_trace(
+    x = sub$n,
+    y = as.character(sub$condition),
+    name = str_to_title(dir),
+    marker = list(color = pal_direction[[dir]]),
+    text = paste0(str_to_title(dir), ": ", sub$n),
+    hoverinfo = "text+y"
+  )
+}
+
+p_bar <- p_bar %>%
+  layout(
+    barmode = "stack",
+    xaxis = list(title = "Number of studies"),
+    yaxis = list(title = "")
+  )
+
+p_bar
+```
+Heatmap/ Evidence Matrix (zscores)
+
+The evidence matrix is a heatmap that compares conditions across multiple quality and outcome metrics at once. Each row is a condition and each column is a metric like study count, percent positive results, percent of randomized controlled trials, and median sample size. The colors represent standardized values (z-scores), so darker green means above average and darker red means below average relative to other conditions. 
+
+A higher z-score means that condition is above average on that metric. For example, a high z-score in “Study count” means that condition has more studies than most others, and a high z-score in “% Positive” means it has a higher share of positive results than average. A lower z-score means the opposite, it’s below average compared to the rest. So a low z-score in “Median sample” would mean studies for that condition tend to have smaller sample sizes than typical. A z-score around 0 means it’s roughly average. The further away from 0 you go (in either direction), the more extreme it is relative to the other conditions.
+```{r}
+d_mat <- studies %>%
+  group_by(condition) %>%
+  summarise(
+    `Study count`   = n(),
+    `% Positive`    = round(mean(outcome_direction == "positive", na.rm = TRUE) * 100),
+    `% RCT`         = round(mean(str_detect(study_design, regex("rct", ignore_case = TRUE)), na.rm = TRUE) * 100),
+    `Median sample` = round(median(sample, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  mutate(condition = fct_reorder(condition, `Study count`))
+
+metrics <- c("Study count", "% Positive", "% RCT", "Median sample")
+
+mat <- d_mat %>%
+  mutate(across(all_of(metrics), ~ as.numeric(scale(.x)))) %>%
+  pivot_longer(all_of(metrics), names_to = "metric", values_to = "z")
+
+raw <- d_mat %>%
+  pivot_longer(all_of(metrics), names_to = "metric", values_to = "raw_val")
+
+combined <- left_join(mat, raw, by = c("condition", "metric"))
+
+p_heat <- plot_ly(
+  combined,
+  x = ~metric,
+  y = ~condition,
+  z = ~z,
+  type = "heatmap",
+  text = ~paste0(condition, "\n", metric, ": ", raw_val),
+  hoverinfo = "text",
+  colorscale = list(
+    list(0, "#c0392b"),
+    list(0.5, "#f7f8fa"),
+    list(1, "#2a7f62")
+  )
+)
+
+p_heat
+```
+
+Sankey Diagram... instead of alluvial. (study design to outcome)
+
+The sankey diagram shows how study design types connect to outcome directions, highlighting where positive or negative results are coming from. The left side lists study designs (like RCTs or observational studies), and the right side shows outcome categories. The flows between them represent the number of studies, with thicker flows meaning more studies. Colors correspond to the outcome direction. You read it by following the flows from each design to see whether more rigorous designs tend to produce positive, mixed, or negative findings.
+```{r}
+d_sankey <- studies %>%
+  filter(!is.na(outcome_direction)) %>%
+  mutate(
+    study_design = fct_lump_n(study_design, n = 5),
+    study_design = as.character(study_design)
+  ) %>%
+  count(study_design, outcome_direction)
+
+designs    <- sort(unique(d_sankey$study_design))
+directions <- sort(unique(d_sankey$outcome_direction))
+
+node_labels <- c(designs, directions)
+n_designs   <- length(designs)
+
+source_idx <- match(d_sankey$study_design, node_labels) - 1
+target_idx <- match(d_sankey$outcome_direction, node_labels) - 1
+
+dir_colors <- pal_direction
+
+node_colors <- c(
+  rep("#6a93d4", n_designs),
+  sapply(directions, function(x) dir_colors[[x]])
+)
+
+link_colors <- sapply(d_sankey$outcome_direction, function(x) {
+  col <- dir_colors[[x]]
+  r <- strtoi(substr(col, 2, 3), 16)
+  g <- strtoi(substr(col, 4, 5), 16)
+  b <- strtoi(substr(col, 6, 7), 16)
+  paste0("rgba(", r, ",", g, ",", b, ",0.4)")
+})
+
+p_sankey <- plot_ly(
+  type = "sankey",
+  node = list(
+    label = node_labels,
+    color = node_colors,
+    pad = 20,
+    thickness = 24
+  ),
+  link = list(
+    source = source_idx,
+    target = target_idx,
+    value  = d_sankey$n,
+    color  = link_colors
+  )
+)
+
+p_sankey
+```
+
