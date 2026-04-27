@@ -7,6 +7,7 @@ output: html_document
 
 library(plotly)
 library(dplyr)
+library(ggExtra)
 
 df <- read_csv('/cloud/project/data/tpbm_clean.csv')
 
@@ -20,6 +21,20 @@ df <- read_csv('/cloud/project/data/tpbm_clean.csv')
 
 df_years <- df |> group_by(year) |> summarise(total = n())
 
+#ggplot version 
+# overtime <- ggplot(df_years,
+#        aes(x = year, y = total)) +
+#   annotate('rect', xmin = 2017, xmax = 2026, 
+#            ymin = -Inf, ymax = Inf, fill = 'darkgreen', alpha = 0.3) +
+#   geom_point() +
+#   geom_line() +
+#   labs(x = 'Year',
+#        y = 'Study Count') +
+#   annotate('text', label = 'Growth Accelerates', x = 2017, y = 15, angle = 90, hjust = -.2) +
+#   annotate('text', label = 'Peak Growth', x = 2025, y = 73, angle = 90, hjust = -.2) +
+#   scale_x_continuous(n.breaks = 5)
+
+#plotly version
 overtime <- plot_ly(data = df_years,
         x = ~year,
         y = ~total,
@@ -28,7 +43,7 @@ overtime <- plot_ly(data = df_years,
   plotly::layout(xaxis = list(title = 'Year', dtick = 5),
                  yaxis = list(title = 'Study Count'),
                  annotations = list(list(x = 2017,y = 15,text = "Growth Accelerates",showarrow = TRUE,arrowhead = 2),
-                                    list(x = 2025,y = 74,text = "Peak Research",showarrow = TRUE,arrowhead = 2),
+                                    list(x = 2025,y = 74,text = "Peak Study Count",showarrow = TRUE,arrowhead = 2),
                                     list(x = 2026,y = 5,text = "Still In-Progress",showarrow = TRUE,arrowhead = 2)
 
 ))
@@ -37,21 +52,26 @@ overtime
 ```
 
 3. Dot plot or bubble chart comparing sample sizes across study designs and conditions
-```{r}
+```{r Scatterplot of Condition vs Sample Size}
 
-bubble <- plot_ly(data = df,
-        x = ~year,
-        y = ~total,
-        type = 'scatter',
-        mode = 'lines+markers') |>
-  plotly::layout(xaxis = list(title = 'Year', dtick = 5),
-                 yaxis = list(title = 'Study Count'),
-                 annotations = list(list(x = 2017,y = 15,text = "Growth Accelerates",showarrow = TRUE,arrowhead = 2),
-                                    list(x = 2025,y = 74,text = "Peak Research",showarrow = TRUE,arrowhead = 2),
-                                    list(x = 2026,y = 5,text = "Still In-Progress",showarrow = TRUE,arrowhead = 2)
+p_main <- plot_ly(data = df,
+                  x = ~sample,
+                  y = ~condition,
+                  type = 'scatter',
+                  color = ~population_age) |>
+  plotly::layout(xaxis = list(title = 'Sample Size', dtick = 20),
+                 yaxis = list(title = ''))
 
-))
+p_top <- plot_ly(data = df,
+                 x = ~sample,
+                 type = 'box')
 
-overtime
+subplot(p_top, plotly_empty(), p_main, 
+        nrows = 2, heights = c(0.1, 0.9), widths = c(0.8, 0.2), 
+        shareX = TRUE, shareY = TRUE, margin = 0.01)
+```
+
+```{r Table of Study Summary}
+
 ```
 
