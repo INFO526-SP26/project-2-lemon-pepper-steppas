@@ -3,6 +3,55 @@ title: "levi_viz"
 output: html_document
 ---
 
+```{r}
+
+library(plotly)
+library(dplyr)
+
+df <- read_csv('/cloud/project/data/tpbm_clean.csv')
+
+```
+
+
 1. Stacked bar chart showing outcome direction (positive, mixed, inconclusive) broken down by condition — note: this would likely replace the simple bar chart above, not complement it, as it contains that information and more
 2. Timeline plot showing how research activity across mental health conditions has changed over time
+
+```{r Timeline Plot}
+
+df_years <- df |> group_by(year) |> summarise(total = n())
+
+overtime <- plot_ly(data = df_years,
+        x = ~year,
+        y = ~total,
+        type = 'scatter',
+        mode = 'lines+markers') |>
+  plotly::layout(xaxis = list(title = 'Year', dtick = 5),
+                 yaxis = list(title = 'Study Count'),
+                 annotations = list(list(x = 2017,y = 15,text = "Growth Accelerates",showarrow = TRUE,arrowhead = 2),
+                                    list(x = 2025,y = 74,text = "Peak Research",showarrow = TRUE,arrowhead = 2),
+                                    list(x = 2026,y = 5,text = "Still In-Progress",showarrow = TRUE,arrowhead = 2)
+
+))
+
+overtime
+```
+
 3. Dot plot or bubble chart comparing sample sizes across study designs and conditions
+```{r}
+
+bubble <- plot_ly(data = df,
+        x = ~year,
+        y = ~total,
+        type = 'scatter',
+        mode = 'lines+markers') |>
+  plotly::layout(xaxis = list(title = 'Year', dtick = 5),
+                 yaxis = list(title = 'Study Count'),
+                 annotations = list(list(x = 2017,y = 15,text = "Growth Accelerates",showarrow = TRUE,arrowhead = 2),
+                                    list(x = 2025,y = 74,text = "Peak Research",showarrow = TRUE,arrowhead = 2),
+                                    list(x = 2026,y = 5,text = "Still In-Progress",showarrow = TRUE,arrowhead = 2)
+
+))
+
+overtime
+```
+
