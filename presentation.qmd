@@ -1,9 +1,9 @@
 ---
-title: "Project title"
-subtitle: "INFO 526 - Spring 2025 - Project 1"
-author: "Author names"
+title: "The Pulse of Red Light Therapy Research"
+subtitle: "INFO 526 - Spring 2026 - Project 2"
+author: "Vivian Huynh & Levi Hood"
 title-slide-attributes:
-  data-background-image: images/watercolour_sys02_img34_teacup-ocean.jpg
+  data-background-image: images/rlt.png
   data-background-size: stretch
   data-background-opacity: "0.7"
   data-slide-number: none
@@ -136,7 +136,7 @@ penguins |>
 
 ## Images
 
-![Image credit: Danielle Navarro, Percolate.](images/watercolour_sys02_img34_teacup-ocean.png){fig-align="center" width="500"}
+![Image credit: Johannes Plenio, Pexels.](images/rlt.jpg){fig-align="center" width="500"}
 
 ## Math Expressions {.smaller}
 
