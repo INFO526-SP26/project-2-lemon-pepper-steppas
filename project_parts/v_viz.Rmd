@@ -3,9 +3,6 @@ title: "v_viz"
 output: html_document
 ---
 
-1. Bar chart showing the number of studies by mental health condition
-2. Heatmap of condition vs. evidence strength, highlighting where research is robust vs. sparse
-3. Alluvial diagram showing the flow from mental health condition → study design → outcome direction (to be used only if it can be kept readable and uncluttered)
 
 ```{r}
 library(dplyr)
@@ -72,51 +69,7 @@ p_bar <- p_bar %>%
 
 p_bar
 ```
-Heatmap/ Evidence Matrix (zscores)
 
-The evidence matrix is a heatmap that compares conditions across multiple quality and outcome metrics at once. Each row is a condition and each column is a metric like study count, percent positive results, percent of randomized controlled trials, and median sample size. The colors represent standardized values (z-scores), so darker green means above average and darker red means below average relative to other conditions. 
-
-A higher z-score means that condition is above average on that metric. For example, a high z-score in “Study count” means that condition has more studies than most others, and a high z-score in “% Positive” means it has a higher share of positive results than average. A lower z-score means the opposite, it’s below average compared to the rest. So a low z-score in “Median sample” would mean studies for that condition tend to have smaller sample sizes than typical. A z-score around 0 means it’s roughly average. The further away from 0 you go (in either direction), the more extreme it is relative to the other conditions.
-```{r}
-d_mat <- studies %>%
-  group_by(condition) %>%
-  summarise(
-    `Study count`   = n(),
-    `% Positive`    = round(mean(outcome_direction == "positive", na.rm = TRUE) * 100),
-    `% RCT`         = round(mean(str_detect(study_design, regex("rct", ignore_case = TRUE)), na.rm = TRUE) * 100),
-    `Median sample` = round(median(sample, na.rm = TRUE)),
-    .groups = "drop"
-  ) %>%
-  mutate(condition = fct_reorder(condition, `Study count`))
-
-metrics <- c("Study count", "% Positive", "% RCT", "Median sample")
-
-mat <- d_mat %>%
-  mutate(across(all_of(metrics), ~ as.numeric(scale(.x)))) %>%
-  pivot_longer(all_of(metrics), names_to = "metric", values_to = "z")
-
-raw <- d_mat %>%
-  pivot_longer(all_of(metrics), names_to = "metric", values_to = "raw_val")
-
-combined <- left_join(mat, raw, by = c("condition", "metric"))
-
-p_heat <- plot_ly(
-  combined,
-  x = ~metric,
-  y = ~condition,
-  z = ~z,
-  type = "heatmap",
-  text = ~paste0(condition, "\n", metric, ": ", raw_val),
-  hoverinfo = "text",
-  colorscale = list(
-    list(0, "#c0392b"),
-    list(0.5, "#f7f8fa"),
-    list(1, "#2a7f62")
-  )
-)
-
-p_heat
-```
 
 Sankey Diagram... instead of alluvial. (study design to outcome)
 
@@ -172,4 +125,233 @@ p_sankey <- plot_ly(
 
 p_sankey
 ```
+
+Box plot — continuous session count distribution broken down by outcome direction, asks whether more sessions = better results
+```{r}
+d_box <- studies %>%
+  filter(!is.na(session_count)) %>%
+  mutate(
+    direction_label = str_to_title(outcome_direction),
+    tip = paste0(
+      "<b>", author, " (", year, ")</b><br>",
+      condition, "<br>",
+      "Sessions: ", session_count, "<br>",
+      str_to_title(outcome_direction)
+    )
+  )
+
+dirs <- c("Positive", "Mixed", "Inconclusive", "Negative")
+p_box <- plot_ly(type = "box")
+
+for (dir in dirs) {
+  sub <- d_box %>% filter(direction_label == dir)
+  if (nrow(sub) == 0) next
+  p_box <- p_box %>% add_trace(
+    y         = sub$session_count,
+    name      = dir,
+    type      = "box",
+    boxpoints = "all",
+    jitter    = 0.4,
+    pointpos  = 0,
+    marker    = list(
+      color   = pal_direction[[tolower(dir)]],
+      size    = 5,
+      opacity = 0.7
+    ),
+    line  = list(color = pal_direction[[tolower(dir)]]),
+    fillcolor = paste0(
+      "rgba(",
+      paste(c(
+        strtoi(substr(pal_direction[[tolower(dir)]], 2, 3), 16),
+        strtoi(substr(pal_direction[[tolower(dir)]], 4, 5), 16),
+        strtoi(substr(pal_direction[[tolower(dir)]], 6, 7), 16)
+      ), collapse = ","),
+      ",0.2)"
+    ),
+    text      = sub$tip,
+    hoverinfo = "text"
+  )
+}
+
+p_box <- p_box %>%
+  layout(
+    xaxis  = list(title = "Outcome direction"),
+    yaxis  = list(title = "Number of sessions", zeroline = FALSE),
+    legend = list(orientation = "h", x = 0, y = -0.15),
+    showlegend = FALSE
+  )
+
+p_box
+```
+
+Sankey 2-  three-stage flow showing how pediatric, adult, and geriatric populations map to conditions and then to study designs
+```{r}
+d_sankey2 <- studies %>%
+  filter(!is.na(population_age), !is.na(condition), !is.na(study_design)) %>%
+  mutate(study_design = fct_lump_n(study_design, n = 4)) %>%
+  count(population_age, condition, study_design) %>%
+  filter(n >= 2)
+
+ages     <- sort(unique(d_sankey2$population_age))
+conds    <- sort(unique(d_sankey2$condition))
+designs  <- sort(unique(as.character(d_sankey2$study_design)))
+
+node_labels <- c(ages, conds, designs)
+n_ages      <- length(ages)
+n_conds     <- length(conds)
+
+age_colors  <- c("adult" = "#2a5298", "geriatric" = "#8e44ad", "pediatric" = "#e09b3d")
+cond_color  <- "#6a93d4"
+des_color   <- "#95a5a6"
+
+node_colors <- c(
+  sapply(ages, function(x) age_colors[[x]]),
+  rep(cond_color, n_conds),
+  rep(des_color, length(designs))
+)
+
+source1 <- match(d_sankey2$population_age, node_labels) - 1
+target1 <- match(d_sankey2$condition,      node_labels) - 1
+source2 <- match(d_sankey2$condition,      node_labels) - 1
+target2 <- match(as.character(d_sankey2$study_design), node_labels) - 1
+
+p_sankey2 <- plot_ly(
+  type = "sankey",
+  node = list(
+    label     = node_labels,
+    color     = node_colors,
+    pad       = 15,
+    thickness = 20,
+    line      = list(color = "#ffffff", width = 0.5)
+  ),
+  link = list(
+    source = c(source1, source2),
+    target = c(target1, target2),
+    value  = c(d_sankey2$n, d_sankey2$n),
+    label  = c(
+      paste0(d_sankey2$population_age, " → ", d_sankey2$condition, ": ", d_sankey2$n),
+      paste0(d_sankey2$condition, " → ", d_sankey2$study_design, ": ", d_sankey2$n)
+    )
+  )
+)
+
+p_sankey2 <- p_sankey2 %>%
+  layout(margin = list(l = 20, r = 20, t = 30, b = 20))
+
+p_sankey2
+
+```
+
+Bar chart 
+```{r}
+d_wl <- studies %>%
+  filter(!is.na(wavelength_nm)) %>%
+  mutate(wavelength_nm = as.factor(wavelength_nm)) %>%
+  count(wavelength_nm, sort = TRUE)
+
+p_wl <- plot_ly(
+  d_wl,
+  x         = ~fct_reorder(wavelength_nm, n),
+  y         = ~n,
+  type      = "bar",
+  marker    = list(
+    color = "#2a5298",
+    line  = list(color = "#ffffff", width = 0.5)
+  ),
+  text      = ~paste0(wavelength_nm, " nm<br>", n, " studies"),
+  hoverinfo = "text"
+) %>%
+  layout(
+    xaxis = list(title = "Wavelength (nm)", tickangle = -45),
+    yaxis = list(title = "Number of studies", zeroline = FALSE)
+  )
+
+p_wl
+
+```
+
+pie chart- study types
+```{r}
+d_pie <- studies %>%
+  mutate(study_design = fct_lump_n(study_design, n = 6)) %>%
+  count(study_design, sort = TRUE)
+
+p_pie <- plot_ly(
+  d_pie,
+  labels    = ~study_design,
+  values    = ~n,
+  type      = "pie",
+  textinfo  = "label+percent",
+  hoverinfo = "label+value",
+  marker    = list(
+    colors = c("#2a5298", "#6a93d4", "#2a7f62", "#e09b3d", "#c0392b", "#8e44ad", "#95a5a6"),
+    line   = list(color = "#ffffff", width = 1.5)
+  )
+) %>%
+  layout(
+    showlegend = TRUE,
+    legend     = list(orientation = "h", x = 0, y = -0.15)
+  )
+
+p_pie
+
+```
+
+```{r}
+d_box2 <- studies %>%
+  filter(!is.na(session_duration_min), !is.na(population_type)) %>%
+  mutate(
+    population_type = str_to_title(population_type),
+    tip = paste0(
+      "<b>", author, " (", year, ")</b><br>",
+      condition, "<br>",
+      "Session duration: ", session_duration_min, " min<br>",
+      str_to_title(population_type)
+    )
+  )
+
+pop_pal <- c("Clinical" = "#2a5298", "Healthy" = "#2a7f62", "Aging" = "#8e44ad")
+
+p_box2 <- plot_ly(type = "box")
+
+for (pop in names(pop_pal)) {
+  sub <- d_box2 %>% filter(population_type == pop)
+  if (nrow(sub) == 0) next
+  p_box2 <- p_box2 %>% add_trace(
+    y         = sub$session_duration_min,
+    name      = pop,
+    type      = "box",
+    boxpoints = "all",
+    jitter    = 0.4,
+    pointpos  = 0,
+    marker    = list(
+      color   = pop_pal[[pop]],
+      size    = 5,
+      opacity = 0.6
+    ),
+    line      = list(color = pop_pal[[pop]]),
+    fillcolor = paste0(
+      "rgba(",
+      paste(c(
+        strtoi(substr(pop_pal[[pop]], 2, 3), 16),
+        strtoi(substr(pop_pal[[pop]], 4, 5), 16),
+        strtoi(substr(pop_pal[[pop]], 6, 7), 16)
+      ), collapse = ","),
+      ",0.2)"
+    ),
+    text      = sub$tip,
+    hoverinfo = "text"
+  )
+}
+
+p_box2 <- p_box2 %>%
+  layout(
+    xaxis      = list(title = "Population type"),
+    yaxis      = list(title = "Session duration (min)", zeroline = FALSE),
+    showlegend = FALSE
+  )
+
+p_box2
+```
+
 
