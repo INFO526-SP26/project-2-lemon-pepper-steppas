@@ -188,7 +188,7 @@ Sankey 2-  three-stage flow showing how pediatric, adult, and geriatric populati
 ```{r}
 d_sankey2 <- studies %>%
   filter(!is.na(population_age), !is.na(condition), !is.na(study_design)) %>%
-  mutate(study_design = fct_lump_n(study_design, n = 4)) %>%
+  mutate(study_design = fct_lump_n(study_design, n = 6)) %>%
   count(population_age, condition, study_design) %>%
   filter(n >= 1)
 
