@@ -12,6 +12,12 @@ library(ggExtra)
 df <- read_csv('/cloud/project/data/tpbm_clean.csv')
 
 ```
+```{r}
+### pie chart
+##  population makeup (age)
+
+### tree map of total sampes per condition with annotated poisitive vs negative or so
+```
 
 
 1. Stacked bar chart showing outcome direction (positive, mixed, inconclusive) broken down by condition — note: this would likely replace the simple bar chart above, not complement it, as it contains that information and more
