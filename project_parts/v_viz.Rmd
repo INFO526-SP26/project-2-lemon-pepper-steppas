@@ -190,7 +190,7 @@ d_sankey2 <- studies %>%
   filter(!is.na(population_age), !is.na(condition), !is.na(study_design)) %>%
   mutate(study_design = fct_lump_n(study_design, n = 4)) %>%
   count(population_age, condition, study_design) %>%
-  filter(n >= 2)
+  filter(n >= 1)
 
 ages     <- sort(unique(d_sankey2$population_age))
 conds    <- sort(unique(d_sankey2$condition))
