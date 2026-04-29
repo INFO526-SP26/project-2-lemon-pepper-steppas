@@ -18,8 +18,8 @@ year_range      <- range(studies$year, na.rm = TRUE)
 pal_direction <- c(
   "positive"     = "#2a7f62",
   "mixed"        = "#e09b3d",
-  "inconclusive" = "#c0392b",
-  "negative"     = "#7f8c8d"
+  "inconclusive" = "#7f8c8d",
+  "negative"     = "#c0392b"
 )
 
 # ── ui ────────────────────────────────────────────────────────────────────────
@@ -114,32 +114,52 @@ ui <- page_sidebar(
     )
   ),
   
-  # 2x2 grid
+  # ── layout ──────────────────────────────────────────────────────────────────
+  # HOW TO ADD A PLOT TO THE UI:
+  # 1. Add a new card() inside layout_columns() below
+  # 2. Give it a card_header() with a descriptive title
+  # 3. Add plotlyOutput("your_plot_id") — the id must match what you use in the server
+  # 4. Adjust col_widths if needed: c(6,6) = 2 columns, c(12) = full width,
+  #    c(4,4,4) = 3 columns, c(8,4) = wide + narrow side by side
+  # Example:
+  #   card(
+  #     full_screen = TRUE,
+  #     card_header("Your chart title here"),
+  #     plotlyOutput("your_plot_id", height = "500px")
+  #   )
+  
   layout_columns(
     col_widths = c(6, 6),
     
+    # ── plot 1 ──────────────────────────────────────────────────────────────
     card(
       full_screen = TRUE,
       card_header("Which conditions are most studied, and how consistent are the results?"),
       plotlyOutput("stacked_bar", height = "500px")
     ),
     
+    # ── plot 2 ──────────────────────────────────────────────────────────────
+    # REPLACE THIS CARD to swap in your own plot:
+    # - change the card_header() text to describe your chart
+    # - change plotlyOutput("plot_2") to match your output id in the server
     card(
       full_screen = TRUE,
-      card_header("How rigorous is the evidence by condition?"),
-      plotlyOutput("evidence_matrix", height = "500px")
+      card_header("Chart 2 title — replace me"),
+      plotlyOutput("plot_2", height = "500px")
     ),
     
+    # ── plot 3 ──────────────────────────────────────────────────────────────
     card(
       full_screen = TRUE,
-      card_header("Where is research volume concentrated, and how positive is it?"),
-      plotlyOutput("treemap", height = "500px")
+      card_header("Chart 3 title — replace me"),
+      plotlyOutput("plot_3", height = "500px")
     ),
     
+    # ── plot 4 ──────────────────────────────────────────────────────────────
     card(
       full_screen = TRUE,
-      card_header("Are positive results coming from rigorous study designs?"),
-      plotlyOutput("sankey", height = "500px")
+      card_header("Chart 4 title — replace me"),
+      plotlyOutput("plot_4", height = "500px")
     )
   )
 )
@@ -180,7 +200,7 @@ server <- function(input, output, session) {
     if (is.na(m)) "—" else round(m)
   })
   
-  # ── 1. stacked bar ───────────────────────────────────────────────────────────
+  # ── plot 1: stacked bar ───────────────────────────────────────────────────
   output$stacked_bar <- renderPlotly({
     d <- filtered() |>
       count(condition, outcome_direction) |>
@@ -212,212 +232,59 @@ server <- function(input, output, session) {
       paper_bgcolor = "#ffffff",
       plot_bgcolor  = "#ffffff",
       font    = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-      xaxis   = list(
-        title     = "Number of studies",
-        gridcolor = "#edf0f5",
-        zeroline  = FALSE
-      ),
+      xaxis   = list(title = "Number of studies", gridcolor = "#edf0f5", zeroline = FALSE),
       yaxis   = list(title = "", tickfont = list(size = 10)),
-      legend  = list(
-        orientation = "h", x = 0, y = -0.1,
-        bgcolor     = "#ffffff",
-        bordercolor = "#dde2ed",
-        borderwidth = 1,
-        font        = list(size = 10)
-      ),
-      margin = list(l = 10, r = 20, t = 10, b = 60)
+      legend  = list(orientation = "h", x = 0, y = -0.1, bgcolor = "#ffffff",
+                     bordercolor = "#dde2ed", borderwidth = 1, font = list(size = 10)),
+      margin  = list(l = 10, r = 20, t = 10, b = 60)
     )
   })
   
-  # ── 2. evidence matrix ───────────────────────────────────────────────────────
-  output$evidence_matrix <- renderPlotly({
-    validate(need(
-      nrow(filtered()) > 1 && n_distinct(filtered()$condition) > 1,
-      "Select more data to display the evidence matrix."
-    ))
-    
-    d <- filtered() |>
-      group_by(condition) |>
-      summarise(
-        `Study count`   = n(),
-        `% Positive`    = round(mean(outcome_direction == "positive", na.rm = TRUE) * 100),
-        `% RCT`         = round(mean(str_detect(study_design, regex("rct", ignore_case = TRUE)), na.rm = TRUE) * 100),
-        `Median sample` = round(median(sample, na.rm = TRUE)),
-        .groups = "drop"
-      ) |>
-      mutate(
-        condition = if (n_distinct(condition) > 1)
-          fct_reorder(condition, `Study count`) else condition
-      )
-    
-    metrics <- c("Study count", "% Positive", "% RCT", "Median sample")
-    
-    mat <- d |>
-      mutate(across(all_of(metrics), ~ as.numeric(scale(.x)))) |>
-      pivot_longer(all_of(metrics), names_to = "metric", values_to = "z")
-    
-    raw <- d |>
-      pivot_longer(all_of(metrics), names_to = "metric", values_to = "raw_val")
-    
-    combined <- left_join(mat, raw, by = c("condition", "metric")) |>
-      mutate(metric = factor(metric, levels = metrics))
-    
-    plot_ly(
-      combined,
-      x         = ~metric,
-      y         = ~condition,
-      z         = ~z,
-      text      = ~paste0(condition, "\n", metric, ": ", raw_val),
-      hoverinfo = "text",
-      type      = "heatmap",
-      colorscale = list(
-        list(0,   "#c0392b"),
-        list(0.5, "#f7f8fa"),
-        list(1,   "#2a7f62")
-      ),
-      showscale = TRUE,
-      colorbar  = list(title = "z-score", tickfont = list(size = 9))
-    ) |>
-      layout(
-        paper_bgcolor = "#ffffff",
-        plot_bgcolor  = "#ffffff",
-        font  = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-        xaxis = list(
-          title     = "",
-          side      = "top",
-          tickfont  = list(size = 10),
-          tickangle = -20
-        ),
-        yaxis  = list(title = "", tickfont = list(size = 10)),
-        margin = list(l = 10, r = 10, t = 80, b = 10)
-      )
+  # ── plot 2: ADD YOUR PLOT HERE ────────────────────────────────────────────
+  # HOW TO ADD YOUR PLOT:
+  # 1. Rename output$plot_2 to something descriptive e.g. output$heatmap
+  # 2. Make sure the name matches plotlyOutput("heatmap") in the UI above
+  # 3. Always use filtered() instead of studies so filters apply
+  # 4. Always wrap your data prep in validate(need(...)) so empty filters
+  #    show a clean message instead of crashing
+  # 5. Always add paper_bgcolor = "#ffffff" and plot_bgcolor = "#ffffff"
+  #    to layout() to match the dashboard style
+  # 6. Always add font = list(color = "#1a1f2e", family = "Source Sans Pro")
+  #    to layout() to match the dashboard font
+  #
+  # TEMPLATE:
+  # output$your_plot_id <- renderPlotly({
+  #   d <- filtered() %>%
+  #     # your data wrangling here
+  #
+  #   validate(need(nrow(d) > 0, "No data available for current filters."))
+  #
+  #   plot_ly(d, ...) %>%
+  #     layout(
+  #       paper_bgcolor = "#ffffff",
+  #       plot_bgcolor  = "#ffffff",
+  #       font = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
+  #       # your layout options here
+  #     )
+  # })
+  
+  output$plot_2 <- renderPlotly({
+    validate(need(FALSE, "Replace this block with your plot code."))
+    plot_ly()
   })
   
-  # ── 3. treemap ───────────────────────────────────────────────────────────────
-  output$treemap <- renderPlotly({
-    d <- filtered() |>
-      group_by(condition) |>
-      summarise(
-        n_studies    = n(),
-        pct_positive = mean(outcome_direction == "positive", na.rm = TRUE),
-        .groups = "drop"
-      ) |>
-      mutate(
-        tip = paste0(
-          "<b>", condition, "</b><br>",
-          n_studies, " studies<br>",
-          round(pct_positive * 100), "% positive"
-        )
-      )
-    
-    validate(need(nrow(d) > 0, "No data available for current filters."))
-    
-    # treemap color scale: red (0% positive) to green (100% positive)
-    colorscale <- list(
-      list(0,   "#c0392b"),
-      list(0.5, "#e09b3d"),
-      list(1,   "#2a7f62")
-    )
-    
-    plot_ly(
-      d,
-      type       = "treemap",
-      labels     = ~condition,
-      parents    = "",
-      values     = ~n_studies,
-      text       = ~tip,
-      hoverinfo  = "text",
-      marker     = list(
-        colors     = ~pct_positive,
-        colorscale = colorscale,
-        showscale  = TRUE,
-        colorbar   = list(
-          title      = "% Positive",
-          tickformat = ".0%",
-          tickfont   = list(size = 9)
-        )
-      ),
-      textinfo   = "label+value",
-      textfont   = list(size = 12, color = "#ffffff")
-    ) |>
-      layout(
-        paper_bgcolor = "#ffffff",
-        font   = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-        margin = list(l = 10, r = 10, t = 10, b = 10)
-      )
+  # ── plot 3: ADD YOUR PLOT HERE ────────────────────────────────────────────
+  # Same instructions as plot 2 above.
+  
+  output$plot_3 <- renderPlotly({
+    validate(need(FALSE, "Replace this block with your plot code."))
+    plot_ly()
   })
   
-  # ── 4. sankey ────────────────────────────────────────────────────────────────
-  output$sankey <- renderPlotly({
-    
-    # lump to top 5 study designs to keep it readable
-    d <- filtered() |>
-      filter(!is.na(outcome_direction)) |>
-      mutate(
-        study_design = fct_lump_n(study_design, n = 5),
-        study_design = as.character(study_design)
-      ) |>
-      count(study_design, outcome_direction)
-    
-    validate(need(nrow(d) > 0, "No data available for current filters."))
-    
-    designs    <- sort(unique(d$study_design))
-    directions <- sort(unique(d$outcome_direction))
-    
-    # nodes: designs first, then directions
-    node_labels <- c(designs, directions)
-    n_designs   <- length(designs)
-    
-    # map to indices (0-based for plotly)
-    source_idx <- match(d$study_design,     node_labels) - 1
-    target_idx <- match(d$outcome_direction, node_labels) - 1
-    
-    # node colors
-    dir_colors <- c(
-      "positive"     = "#2a7f62",
-      "mixed"        = "#e09b3d",
-      "inconclusive" = "#c0392b",
-      "negative"     = "#7f8c8d"
-    )
-    
-    node_colors <- c(
-      rep("#6a93d4", n_designs),
-      sapply(directions, function(x) dir_colors[[x]])
-    )
-    
-    # link colors: match outcome direction
-    link_colors <- sapply(d$outcome_direction, function(x) {
-      col <- dir_colors[[x]]
-      # convert hex to rgba for transparency
-      r <- strtoi(substr(col, 2, 3), 16)
-      g <- strtoi(substr(col, 4, 5), 16)
-      b <- strtoi(substr(col, 6, 7), 16)
-      paste0("rgba(", r, ",", g, ",", b, ",0.4)")
-    })
-    
-    plot_ly(
-      type = "sankey",
-      orientation = "h",
-      node = list(
-        label = node_labels,
-        color = node_colors,
-        pad   = 20,
-        thickness = 24,
-        line  = list(color = "#ffffff", width = 0.5)
-      ),
-      link = list(
-        source = source_idx,
-        target = target_idx,
-        value  = d$n,
-        color  = link_colors,
-        label  = paste0(d$study_design, " → ", str_to_title(d$outcome_direction), ": ", d$n, " studies")
-      )
-    ) |>
-      layout(
-        paper_bgcolor = "#ffffff",
-        font   = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-        margin = list(l = 20, r = 20, t = 20, b = 20)
-      )
+  # ── plot 4: ADD YOUR PLOT HERE ────────────────────────────────────────────────────────
+  output$plot_4 <- renderPlotly({
+    validate(need(FALSE, "Replace this block with your plot code."))
+    plot_ly()
   })
 }
 
