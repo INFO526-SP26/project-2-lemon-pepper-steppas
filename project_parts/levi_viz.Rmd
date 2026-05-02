@@ -12,11 +12,10 @@ library(ggExtra)
 df <- read_csv('/cloud/project/data/tpbm_clean.csv')
 
 ```
+
 ```{r}
 ### pie chart
 ##  population makeup (age)
-
-### tree map of total sampes per condition with annotated poisitive vs negative or so
 ```
 
 
@@ -80,4 +79,21 @@ subplot(p_top, plotly_empty(), p_main,
 ```{r Table of Study Summary}
 
 ```
+
+```{r Tree Map}
+
+### tree map of total samples per condition with annotated poisitive vs negative or so
+
+df_tree <- df |> group_by(condition) |> summarise(total = n())
+
+p_tree <- plot_ly(data = df_tree,
+                  type = 'treemap',
+                  labels = ~condition,
+                  parents = '',
+                  values = ~total,
+                  marker = list(colors = hcl.colors(nrow(df_tree), palette = "Set1"))
+)
+p_tree
+```
+
 
