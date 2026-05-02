@@ -64,7 +64,7 @@ ui <- page_sidebar(
     ),
     
     selectInput("condition_filter", "Condition",
-                choices = c("All", all_conditions), selected = "All"
+                choices = c("All", all_conditions), selected = "All", multiple = TRUE
     ),
     
     selectInput("design_filter", "Study design",
