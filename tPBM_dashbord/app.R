@@ -101,9 +101,9 @@ ui <- page_sidebar(
       theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
     ),
     value_box(
-      title    = "% Positive outcomes",
-      value    = textOutput("pct_positive"),
-      showcase = bsicons::bs_icon("graph-up-arrow"),
+      title    = "% RCTs",
+      value    = textOutput("pct_rct"),        # <-- changed from pct_positive
+      showcase = bsicons::bs_icon("clipboard2-check"),
       theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
     ),
     value_box(
@@ -192,8 +192,14 @@ server <- function(input, output, session) {
   # value boxes
   output$n_studies    <- renderText(nrow(filtered()))
   output$n_conditions <- renderText(n_distinct(filtered()$condition))
-  output$pct_positive <- renderText({
-    paste0(round(mean(filtered()$outcome_direction == "positive", na.rm = TRUE) * 100), "%")
+  output$pct_rct <- renderText({
+    paste0(
+      round(mean(
+        str_detect(filtered()$study_design, regex("rct", ignore_case = TRUE)),
+        na.rm = TRUE
+      ) * 100),
+      "%"
+    )
   })
   output$med_sample <- renderText({
     m <- median(filtered()$sample, na.rm = TRUE)
