@@ -1,6 +1,8 @@
 ---
 title: "levi_viz"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r}
@@ -9,7 +11,7 @@ library(plotly)
 library(dplyr)
 library(ggExtra)
 
-df <- read_csv('/cloud/project/data/tpbm_clean.csv')
+df <- read.csv('/cloud/project/data/tpbm_clean.csv')
 
 ```
 
@@ -90,8 +92,8 @@ p_tree <- plot_ly(data = df_tree,
                   type = 'treemap',
                   labels = ~condition,
                   parents = '',
-                  values = ~total,
-                  marker = list(colors = hcl.colors(nrow(df_tree), palette = "Set1"))
+                  values = ~total
+                  #marker = list(colors = hcl.colors(nrow(df_tree), palette = "Set1"))
 )
 p_tree
 ```
