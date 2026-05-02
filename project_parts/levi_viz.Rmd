@@ -96,4 +96,36 @@ p_tree <- plot_ly(data = df_tree,
 p_tree
 ```
 
+```{r Pie Chart}
+# inner ring
+df_nested <- bind_rows(
+  df |>
+    group_by(population_type) |>
+    summarise(total = n(), .groups = 'drop') |>
+    mutate(id = population_type, label = population_type, parent = ''),
+
+# outer ring
+  df |>
+    group_by(population_type, condition) |>
+    summarise(total = n(), .groups = 'drop') |>
+    mutate(
+      id     = paste(population_type, condition, sep = ' - '),
+      label  = condition,
+      parent = population_type
+    )
+)
+
+p_pie <- plot_ly(
+  data         = df_nested,
+  type         = "sunburst",
+  ids          = ~id,
+  labels       = ~label,
+  parents      = ~parent,
+  values       = ~total,
+  branchvalues = "total"
+)
+                  
+p_pie
+
+```
 
