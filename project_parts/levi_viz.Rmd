@@ -119,12 +119,13 @@ df_nested <- bind_rows(
 
 p_pie <- plot_ly(
   data         = df_nested,
-  type         = "sunburst",
+  type         = 'sunburst',
   ids          = ~id,
   labels       = ~label,
   parents      = ~parent,
   values       = ~total,
-  branchvalues = "total"
+  branchvalues = 'total',
+  textinfo     = 'label+percent parent'
 )
                   
 p_pie

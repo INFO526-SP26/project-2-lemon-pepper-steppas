@@ -145,7 +145,7 @@ ui <- page_sidebar(
     card(
       full_screen = TRUE,
       card_header("Chart 2 title — replace me"),
-      plotlyOutput("plot_2", height = "500px")
+      plotlyOutput("sunburst", height = "500px")
     ),
     
     # ── plot 3 ──────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ server <- function(input, output, session) {
       count(condition, outcome_direction) |>
       mutate(condition = fct_reorder(condition, n, sum))
     
-    validate(need(nrow(d) > 0, "No data available for current filters."))
+    validate(need(nrow(df_nested) > 0, "No data available for current filters."))
     
     dirs <- c("positive", "mixed", "inconclusive", "negative")
     p <- plot_ly(type = "bar", orientation = "h")
@@ -274,9 +274,39 @@ server <- function(input, output, session) {
   #     )
   # })
   
-  output$plot_2 <- renderPlotly({
-    validate(need(FALSE, "Replace this block with your plot code."))
-    plot_ly()
+  
+  output$sunburst <- renderPlotly({
+    
+    df_nested <- bind_rows(
+      # inner ring
+      filtered() |>
+        group_by(population_type) |>
+        summarise(total = n(), .groups = 'drop') |>
+        mutate(id = population_type, label = population_type, parent = ''),
+      
+      # outer ring
+      filtered() |>
+        group_by(population_type, condition) |>
+        summarise(total = n(), .groups = 'drop') |>
+        mutate(
+          id     = paste(population_type, condition, sep = ' - '),
+          label  = condition,
+          parent = population_type
+        )
+    )
+    
+    validate(need(nrow(df_nested) > 0, "No data available for current filters."))
+    
+    p_pie <- plot_ly(
+      data         = df_nested,
+      type         = 'sunburst',
+      ids          = ~id,
+      labels       = ~label,
+      parents      = ~parent,
+      values       = ~total,
+      branchvalues = 'total',
+      textinfo     = 'label+percent parent'
+    )
   })
   
   # ── plot 3: ADD YOUR PLOT HERE ────────────────────────────────────────────
