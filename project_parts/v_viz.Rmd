@@ -128,43 +128,57 @@ p_sankey
 
 Box plot — continuous session count distribution broken down by outcome direction, asks whether more sessions = better results
 ```{r}
-d_box <- studies %>%
-  filter(!is.na(session_count)) %>%
+# ── Box Plot: Sample Size by Control Type ─────────────────────────────────────
+# Does the sample size differ depending on the type of control used?
+
+d_box_ctrl <- studies %>%
+  filter(!is.na(sample), !is.na(control_type)) %>%
+  filter(sample <= 150) %>%
   mutate(
-    direction_label = str_to_title(outcome_direction),
+    control_type = str_to_title(str_trim(control_type)),
     tip = paste0(
       "<b>", author, " (", year, ")</b><br>",
       condition, "<br>",
-      "Sessions: ", session_count, "<br>",
-      str_to_title(outcome_direction)
+      "Sample size: ", sample, "<br>",
+      control_type
     )
   )
 
-dirs <- c("Positive", "Mixed", "Inconclusive", "Negative")
-p_box <- plot_ly(type = "box")
+ctrl_pal <- c(
+  "Placebo-Controlled" = "#2a5298",
+  "Sham-Controlled"    = "#2a7f62",
+  "No Control Group"   = "#e09b3d",
+  "Open-Label"         = "#8e44ad",
+  "Case-Control"       = "#c0392b"
+)
 
-for (dir in dirs) {
-  sub <- d_box %>% filter(direction_label == dir)
+# only keep control types that exist in the data and have a color defined
+ctrl_levels <- intersect(names(ctrl_pal), unique(d_box_ctrl$control_type))
+
+p_box_ctrl <- plot_ly(type = "box")
+
+for (ctrl in ctrl_levels) {
+  sub <- d_box_ctrl %>% filter(control_type == ctrl)
   if (nrow(sub) == 0) next
-  p_box <- p_box %>% add_trace(
-    y         = sub$session_count,
-    name      = dir,
+  p_box_ctrl <- p_box_ctrl %>% add_trace(
+    y         = sub$sample,
+    name      = ctrl,
     type      = "box",
     boxpoints = "all",
     jitter    = 0.4,
     pointpos  = 0,
     marker    = list(
-      color   = pal_direction[[tolower(dir)]],
+      color   = ctrl_pal[[ctrl]],
       size    = 5,
-      opacity = 0.7
+      opacity = 0.6
     ),
-    line  = list(color = pal_direction[[tolower(dir)]]),
+    line      = list(color = ctrl_pal[[ctrl]]),
     fillcolor = paste0(
       "rgba(",
       paste(c(
-        strtoi(substr(pal_direction[[tolower(dir)]], 2, 3), 16),
-        strtoi(substr(pal_direction[[tolower(dir)]], 4, 5), 16),
-        strtoi(substr(pal_direction[[tolower(dir)]], 6, 7), 16)
+        strtoi(substr(ctrl_pal[[ctrl]], 2, 3), 16),
+        strtoi(substr(ctrl_pal[[ctrl]], 4, 5), 16),
+        strtoi(substr(ctrl_pal[[ctrl]], 6, 7), 16)
       ), collapse = ","),
       ",0.2)"
     ),
@@ -173,15 +187,14 @@ for (dir in dirs) {
   )
 }
 
-p_box <- p_box %>%
+p_box_ctrl <- p_box_ctrl %>%
   layout(
-    xaxis  = list(title = "Outcome direction"),
-    yaxis  = list(title = "Number of sessions", zeroline = FALSE),
-    legend = list(orientation = "h", x = 0, y = -0.15),
+    xaxis      = list(title = "Control type", tickangle = -20),
+    yaxis      = list(title = "Sample size (n)", zeroline = FALSE),
     showlegend = FALSE
   )
 
-p_box
+p_box_ctrl
 ```
 
 Sankey 2-  three-stage flow showing how pediatric, adult, and geriatric populations map to conditions and then to study designs
@@ -354,4 +367,14 @@ p_box2 <- p_box2 %>%
 p_box2
 ```
 
+
+```{r}
+df |>
+  count(outcome_direction) |>
+  mutate(
+    pct= round(n / sum(n) * 100,1),
+    label = paste0(n, " (", pct, "%")
+  ) |>
+  arrange(desc(n))
+```
 

@@ -13,6 +13,7 @@ all_conditions  <- sort(unique(studies$condition))
 all_designs     <- sort(unique(studies$study_design))
 all_directions  <- sort(unique(studies$outcome_direction))
 all_populations <- sort(unique(studies$population_type))
+all_ages <- sort(unique(studies$population_age))
 year_range      <- range(studies$year, na.rm = TRUE)
 
 pal_direction <- c(
@@ -79,88 +80,72 @@ ui <- page_sidebar(
                 choices = c("All", all_directions), selected = "All", multiple = TRUE
     ),
     
+    selectInput("age_filter", "Population age",
+                choices= c("All", all_ages), selected= "All", multiple= TRUE
+    ),
     hr(),
     actionButton("reset", "Reset filters",
                  class = "btn-outline-secondary btn-sm w-100"
     )
   ),
   
-  # value boxes
-  layout_columns(
-    fill = FALSE,
-    value_box(
-      title    = "Total studies",
-      value    = textOutput("n_studies"),
-      showcase = bsicons::bs_icon("journal-text"),
-      theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-    ),
-    value_box(
-      title    = "Conditions studied",
-      value    = textOutput("n_conditions"),
-      showcase = bsicons::bs_icon("diagram-3"),
-      theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-    ),
-    value_box(
-      title    = "% RCTs",
-      value    = textOutput("pct_rct"),        # <-- changed from pct_positive
-      showcase = bsicons::bs_icon("clipboard2-check"),
-      theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-    ),
-    value_box(
-      title    = "Median sample size",
-      value    = textOutput("med_sample"),
-      showcase = bsicons::bs_icon("people"),
-      theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-    )
-  ),
-  
-  # ── layout ──────────────────────────────────────────────────────────────────
-  # HOW TO ADD A PLOT TO THE UI:
-  # 1. Add a new card() inside layout_columns() below
-  # 2. Give it a card_header() with a descriptive title
-  # 3. Add plotlyOutput("your_plot_id") — the id must match what you use in the server
-  # 4. Adjust col_widths if needed: c(6,6) = 2 columns, c(12) = full width,
-  #    c(4,4,4) = 3 columns, c(8,4) = wide + narrow side by side
-  # Example:
-  #   card(
-  #     full_screen = TRUE,
-  #     card_header("Your chart title here"),
-  #     plotlyOutput("your_plot_id", height = "500px")
+  # value boxes — uncomment to restore
+  # layout_columns(
+  #   fill = FALSE,
+  #   value_box(
+  #     title    = "Total studies",
+  #     value    = textOutput("n_studies"),
+  #     showcase = bsicons::bs_icon("journal-text"),
+  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
+  #   ),
+  #   value_box(
+  #     title    = "Conditions studied",
+  #     value    = textOutput("n_conditions"),
+  #     showcase = bsicons::bs_icon("diagram-3"),
+  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
+  #   ),
+  #   value_box(
+  #     title    = "% RCTs",
+  #     value    = textOutput("pct_rct"),
+  #     showcase = bsicons::bs_icon("clipboard2-check"),
+  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
+  #   ),
+  #   value_box(
+  #     title    = "Median sample size",
+  #     value    = textOutput("med_sample"),
+  #     showcase = bsicons::bs_icon("people"),
+  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
   #   )
+  # ),
   
+  # row 1: three plots
   layout_columns(
-    col_widths = c(6, 6),
+    col_widths = c(4, 4, 4),
     
-    # ── plot 1 ──────────────────────────────────────────────────────────────
     card(
       full_screen = TRUE,
       card_header("Which conditions are most studied, and how consistent are the results?"),
-      plotlyOutput("stacked_bar", height = "500px")
+      plotlyOutput("stacked_bar", height = "480px")
     ),
     
-    # ── plot 2 ──────────────────────────────────────────────────────────────
-    # REPLACE THIS CARD to swap in your own plot:
-    # - change the card_header() text to describe your chart
-    # - change plotlyOutput("plot_2") to match your output id in the server
     card(
       full_screen = TRUE,
-      card_header("Chart 2 title — replace me"),
-      plotlyOutput("sunburst", height = "500px")
+      card_header("Research volume by population type and condition"),
+      plotlyOutput("sunburst", height = "480px")
     ),
     
-    # ── plot 3 ──────────────────────────────────────────────────────────────
     card(
       full_screen = TRUE,
-      card_header("Chart 3 title — replace me"),
-      plotlyOutput("plot_3", height = "500px")
-    ),
-    
-    # ── plot 4 ──────────────────────────────────────────────────────────────
-    card(
-      full_screen = TRUE,
-      card_header("Chart 4 title — replace me"),
-      plotlyOutput("plot_4", height = "500px")
+      card_header("Sample size distribution by control type"),
+      plotlyOutput("box_ctrl", height = "480px")
     )
+  ),
+  
+  # row 2: sankey full width
+  card(
+    full_screen = TRUE,
+    card_header("How does population age flow into conditions and study designs?"),
+    plotlyOutput("sankey2", height = "550px")
   )
 )
 
@@ -173,6 +158,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "design_filter",     selected = "All")
     updateSelectInput(session, "population_filter", selected = "All")
     updateSelectInput(session, "direction_filter",  selected = "All")
+    updateSelectInput(session, "age_filter", selected= "All")
   })
   
   filtered <- reactive({
@@ -184,12 +170,14 @@ server <- function(input, output, session) {
       d <- d |> filter(study_design      %in% input$design_filter)
     if (!"All" %in% input$population_filter && length(input$population_filter) > 0)
       d <- d |> filter(population_type   %in% input$population_filter)
+    if (!"All" %in% input$age_filter && length(input$age_filter) > 0)
+      d <- d |> filter(population_age %in% input$age_filter)
     if (!"All" %in% input$direction_filter  && length(input$direction_filter)  > 0)
       d <- d |> filter(outcome_direction %in% input$direction_filter)
     d
   })
   
-  # value boxes
+  # value boxes — kept in server in case UI is uncommented
   output$n_studies    <- renderText(nrow(filtered()))
   output$n_conditions <- renderText(n_distinct(filtered()$condition))
   output$pct_rct <- renderText({
@@ -212,7 +200,7 @@ server <- function(input, output, session) {
       count(condition, outcome_direction) |>
       mutate(condition = fct_reorder(condition, n, sum))
     
-    validate(need(nrow(df_nested) > 0, "No data available for current filters."))
+    validate(need(nrow(d) > 0, "No data available for current filters."))
     
     dirs <- c("positive", "mixed", "inconclusive", "negative")
     p <- plot_ly(type = "bar", orientation = "h")
@@ -240,56 +228,25 @@ server <- function(input, output, session) {
       font    = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
       xaxis   = list(title = "Number of studies", gridcolor = "#edf0f5", zeroline = FALSE),
       yaxis   = list(title = "", tickfont = list(size = 10)),
-      legend  = list(orientation = "h", x = 0, y = -0.1, bgcolor = "#ffffff",
+      legend  = list(orientation = "h", x = 0, y = -0.25, bgcolor = "#ffffff",
                      bordercolor = "#dde2ed", borderwidth = 1, font = list(size = 10)),
-      margin  = list(l = 10, r = 20, t = 10, b = 60)
+      margin  = list(l = 10, r = 20, t = 10, b = 100)
     )
   })
   
-  # ── plot 2: ADD YOUR PLOT HERE ────────────────────────────────────────────
-  # HOW TO ADD YOUR PLOT:
-  # 1. Rename output$plot_2 to something descriptive e.g. output$heatmap
-  # 2. Make sure the name matches plotlyOutput("heatmap") in the UI above
-  # 3. Always use filtered() instead of studies so filters apply
-  # 4. Always wrap your data prep in validate(need(...)) so empty filters
-  #    show a clean message instead of crashing
-  # 5. Always add paper_bgcolor = "#ffffff" and plot_bgcolor = "#ffffff"
-  #    to layout() to match the dashboard style
-  # 6. Always add font = list(color = "#1a1f2e", family = "Source Sans Pro")
-  #    to layout() to match the dashboard font
-  #
-  # TEMPLATE:
-  # output$your_plot_id <- renderPlotly({
-  #   d <- filtered() %>%
-  #     # your data wrangling here
-  #
-  #   validate(need(nrow(d) > 0, "No data available for current filters."))
-  #
-  #   plot_ly(d, ...) %>%
-  #     layout(
-  #       paper_bgcolor = "#ffffff",
-  #       plot_bgcolor  = "#ffffff",
-  #       font = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-  #       # your layout options here
-  #     )
-  # })
-  
-  
+  # ── plot 2: sunburst ─────────────────────────────────────────────────────
   output$sunburst <- renderPlotly({
-    
     df_nested <- bind_rows(
-      # inner ring
       filtered() |>
         group_by(population_type) |>
-        summarise(total = n(), .groups = 'drop') |>
-        mutate(id = population_type, label = population_type, parent = ''),
+        summarise(total = n(), .groups = "drop") |>
+        mutate(id = population_type, label = population_type, parent = ""),
       
-      # outer ring
       filtered() |>
         group_by(population_type, condition) |>
-        summarise(total = n(), .groups = 'drop') |>
+        summarise(total = n(), .groups = "drop") |>
         mutate(
-          id     = paste(population_type, condition, sep = ' - '),
+          id     = paste(population_type, condition, sep = " - "),
           label  = condition,
           parent = population_type
         )
@@ -297,30 +254,141 @@ server <- function(input, output, session) {
     
     validate(need(nrow(df_nested) > 0, "No data available for current filters."))
     
-    p_pie <- plot_ly(
+    plot_ly(
       data         = df_nested,
-      type         = 'sunburst',
+      type         = "sunburst",
       ids          = ~id,
       labels       = ~label,
       parents      = ~parent,
       values       = ~total,
-      branchvalues = 'total',
-      textinfo     = 'label+percent parent'
+      branchvalues = "total",
+      textinfo     = "label+percent parent"
+    ) |>
+      layout(
+        paper_bgcolor = "#ffffff",
+        font          = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
+        margin        = list(l = 10, r = 10, t = 10, b = 10)
+      )
+  })
+  
+  # ── plot 3: box plot ──────────────────────────────────────────────────────
+  output$box_ctrl <- renderPlotly({
+    d_box_ctrl <- filtered() |>
+      filter(!is.na(sample), !is.na(control_type)) |>
+      filter(sample <= 150) |>
+      mutate(
+        control_type = str_to_title(str_trim(control_type)),
+        tip = paste0(
+          "<b>", author, " (", year, ")</b><br>",
+          condition, "<br>",
+          "Sample size: ", sample, "<br>",
+          control_type
+        )
+      )
+    
+    validate(need(nrow(d_box_ctrl) > 0, "No data available for current filters."))
+    
+    ctrl_pal <- c(
+      "Placebo-Controlled" = "#2a5298",
+      "Sham-Controlled"    = "#2a7f62",
+      "No Control Group"   = "#e09b3d",
+      "Open-Label"         = "#8e44ad",
+      "Case-Control"       = "#c0392b"
+    )
+    
+    ctrl_levels <- intersect(names(ctrl_pal), unique(d_box_ctrl$control_type))
+    
+    p <- plot_ly(type = "box")
+    
+    for (ctrl in ctrl_levels) {
+      sub <- d_box_ctrl |> filter(control_type == ctrl)
+      if (nrow(sub) == 0) next
+      p <- p |> add_trace(
+        y         = sub$sample,
+        name      = ctrl,
+        type      = "box",
+        boxpoints = "all",
+        jitter    = 0.4,
+        pointpos  = 0,
+        marker    = list(color = ctrl_pal[[ctrl]], size = 5, opacity = 0.6),
+        line      = list(color = ctrl_pal[[ctrl]]),
+        fillcolor = paste0(
+          "rgba(",
+          paste(c(
+            strtoi(substr(ctrl_pal[[ctrl]], 2, 3), 16),
+            strtoi(substr(ctrl_pal[[ctrl]], 4, 5), 16),
+            strtoi(substr(ctrl_pal[[ctrl]], 6, 7), 16)
+          ), collapse = ","),
+          ",0.2)"
+        ),
+        text      = sub$tip,
+        hoverinfo = "text"
+      )
+    }
+    
+    p |> layout(
+      paper_bgcolor = "#ffffff",
+      plot_bgcolor  = "#ffffff",
+      font       = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
+      xaxis      = list(title = "Control type", tickangle = -20),
+      yaxis      = list(title = "Sample size (n)", zeroline = FALSE),
+      showlegend = FALSE
     )
   })
   
-  # ── plot 3: ADD YOUR PLOT HERE ────────────────────────────────────────────
-  # Same instructions as plot 2 above.
-  
-  output$plot_3 <- renderPlotly({
-    validate(need(FALSE, "Replace this block with your plot code."))
-    plot_ly()
-  })
-  
-  # ── plot 4: ADD YOUR PLOT HERE ────────────────────────────────────────────────────────
-  output$plot_4 <- renderPlotly({
-    validate(need(FALSE, "Replace this block with your plot code."))
-    plot_ly()
+  # ── plot 4: sankey ────────────────────────────────────────────────────────
+  output$sankey2 <- renderPlotly({
+    d_sankey2 <- filtered() |>
+      filter(!is.na(population_age), !is.na(condition), !is.na(study_design)) |>
+      mutate(study_design = as.character(fct_lump_n(study_design, n = 6))) |>
+      count(population_age, condition, study_design) |>
+      filter(n >= 1)
+    
+    validate(need(nrow(d_sankey2) > 0, "No data available for current filters."))
+    
+    ages    <- sort(unique(d_sankey2$population_age))
+    conds   <- sort(unique(d_sankey2$condition))
+    designs <- sort(unique(d_sankey2$study_design))
+    
+    node_labels <- c(ages, conds, designs)
+    
+    age_colors <- c("adult" = "#2a5298", "geriatric" = "#8e44ad", "pediatric" = "#e09b3d")
+    
+    node_colors <- c(
+      sapply(ages,   function(x) age_colors[[x]]),
+      rep("#6a93d4", length(conds)),
+      rep("#95a5a6", length(designs))
+    )
+    
+    source1 <- match(d_sankey2$population_age,  node_labels) - 1
+    target1 <- match(d_sankey2$condition,        node_labels) - 1
+    source2 <- match(d_sankey2$condition,        node_labels) - 1
+    target2 <- match(d_sankey2$study_design,     node_labels) - 1
+    
+    plot_ly(
+      type = "sankey",
+      node = list(
+        label     = node_labels,
+        color     = node_colors,
+        pad       = 15,
+        thickness = 20,
+        line      = list(color = "#ffffff", width = 0.5)
+      ),
+      link = list(
+        source = c(source1, source2),
+        target = c(target1, target2),
+        value  = c(d_sankey2$n, d_sankey2$n),
+        label  = c(
+          paste0(d_sankey2$population_age, " → ", d_sankey2$condition, ": ", d_sankey2$n),
+          paste0(d_sankey2$condition, " → ", d_sankey2$study_design, ": ", d_sankey2$n)
+        )
+      )
+    ) |>
+      layout(
+        paper_bgcolor = "#ffffff",
+        font          = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
+        margin        = list(l = 20, r = 20, t = 30, b = 20)
+      )
   })
 }
 
