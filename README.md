@@ -1,5 +1,4 @@
-```markdown
-# Red Light Therapy & Mental Health — Research Evidence Dashboard
+# Red Light Therapy & Mental Health: Mapping the Research Landscape
 
 **INFO 526: Data Visualization | Spring 2026**  
 **University of Arizona — College of Information Science**  
@@ -7,16 +6,16 @@
 
 ---
 
-## Overview
+## Abstract
 
-This project maps the current research landscape of photobiomodulation (red light therapy) and mental health outcomes. Rather than arguing whether the therapy works, the goal is to visualize what the science actually shows — which conditions are most studied, how results vary across study designs and populations, and where findings are consistent versus mixed or inconclusive.
+Red light therapy, also known as photobiomodulation (tPBM), has gained widespread attention for a range of claimed health benefits, yet the underlying scientific evidence is rarely presented with meaningful context. This project organizes and visualizes published research on red light therapy and mental health outcomes, providing a clearer picture of what the current science actually supports. Using 102 studies collected from PubMed, ScienceDirect, and Sage Journals via the PICO framework, we built an interactive Shiny dashboard that allows users to explore which mental health conditions are most studied, how results vary across study designs and populations, and where findings are consistent versus mixed or inconclusive.
 
 ---
 
 ## Repository Contents
 
 | File | Description |
-|---|---|
+| --- | --- |
 | `data_cleaning.Rmd` | Full data cleaning and preprocessing pipeline |
 | `tPBM_data.csv` | Raw dataset (102 studies, 18 features) |
 | `tpbm_clean.csv` | Cleaned and expanded dataset (227 rows) |
@@ -51,15 +50,20 @@ All charts respond to a shared sidebar with filters for year range, condition, s
 ## How to Run
 
 1. Clone the repository
-2. Open R and install dependencies:
+2. Install dependencies in R:
+
 ```r
 install.packages(c("shiny", "tidyverse", "plotly", "bslib", "bsicons"))
 ```
-3. Load your cleaned dataset into the environment:
+
+3. Load the cleaned dataset:
+
 ```r
 df_clean <- read_csv("tpbm_clean.csv")
 ```
+
 4. Run the app:
+
 ```r
 shiny::runApp("app.R")
 ```
@@ -68,16 +72,16 @@ shiny::runApp("app.R")
 
 ## Dependencies
 
-- R 4.3+
-- `shiny`
-- `tidyverse`
-- `plotly`
-- `bslib`
-- `bsicons`
+| Package | Purpose |
+| --- | --- |
+| `shiny` | Dashboard framework |
+| `tidyverse` | Data cleaning and wrangling |
+| `plotly` | Interactive visualizations |
+| `bslib` | Dashboard theming |
+| `bsicons` | Icons |
 
 ---
 
 ## Course Context
 
 This project was completed as Project 2 for INFO 526: Data Visualization at the University of Arizona College of Information Science, Spring 2026.
-```
