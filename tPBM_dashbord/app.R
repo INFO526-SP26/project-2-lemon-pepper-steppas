@@ -3,7 +3,7 @@ library(tidyverse)
 library(plotly)
 library(bslib)
 
-# ── load data ─────────────────────────────────────────────────────────────────
+# load data
 # df_clean <- read_csv("tpbm_clean.csv")
 
 studies <- df_clean |>
@@ -13,7 +13,7 @@ all_conditions  <- sort(unique(studies$condition))
 all_designs     <- sort(unique(studies$study_design))
 all_directions  <- sort(unique(studies$outcome_direction))
 all_populations <- sort(unique(studies$population_type))
-all_ages <- sort(unique(studies$population_age))
+all_ages        <- sort(unique(studies$population_age))
 year_range      <- range(studies$year, na.rm = TRUE)
 
 pal_direction <- c(
@@ -81,63 +81,36 @@ ui <- page_sidebar(
     ),
     
     selectInput("age_filter", "Population age",
-                choices= c("All", all_ages), selected= "All", multiple= TRUE
+                choices = c("All", all_ages), selected = "All", multiple = TRUE
     ),
+    
     hr(),
+    
     actionButton("reset", "Reset filters",
                  class = "btn-outline-secondary btn-sm w-100"
     )
   ),
   
-  # value boxes — uncomment to restore
-  # layout_columns(
-  #   fill = FALSE,
-  #   value_box(
-  #     title    = "Total studies",
-  #     value    = textOutput("n_studies"),
-  #     showcase = bsicons::bs_icon("journal-text"),
-  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-  #   ),
-  #   value_box(
-  #     title    = "Conditions studied",
-  #     value    = textOutput("n_conditions"),
-  #     showcase = bsicons::bs_icon("diagram-3"),
-  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-  #   ),
-  #   value_box(
-  #     title    = "% RCTs",
-  #     value    = textOutput("pct_rct"),
-  #     showcase = bsicons::bs_icon("clipboard2-check"),
-  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-  #   ),
-  #   value_box(
-  #     title    = "Median sample size",
-  #     value    = textOutput("med_sample"),
-  #     showcase = bsicons::bs_icon("people"),
-  #     theme    = value_box_theme(bg = "#eef2fb", fg = "#1a1f2e")
-  #   )
-  # ),
-  
   # row 1: three plots
   layout_columns(
-    col_widths = c(4, 4, 4),
+    col_widths = c(5, 3, 4),
     
     card(
       full_screen = TRUE,
       card_header("Which conditions are most studied, and how consistent are the results?"),
-      plotlyOutput("stacked_bar", height = "480px")
+      plotlyOutput("stacked_bar", height = "460px")
     ),
     
     card(
       full_screen = TRUE,
       card_header("Research volume by population type and condition"),
-      plotlyOutput("sunburst", height = "480px")
+      plotlyOutput("sunburst", height = "460px")
     ),
     
     card(
       full_screen = TRUE,
       card_header("Sample size distribution by control type"),
-      plotlyOutput("box_ctrl", height = "480px")
+      plotlyOutput("box_ctrl", height = "460px")
     )
   ),
   
@@ -158,7 +131,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "design_filter",     selected = "All")
     updateSelectInput(session, "population_filter", selected = "All")
     updateSelectInput(session, "direction_filter",  selected = "All")
-    updateSelectInput(session, "age_filter", selected= "All")
+    updateSelectInput(session, "age_filter",        selected = "All")
   })
   
   filtered <- reactive({
@@ -170,14 +143,14 @@ server <- function(input, output, session) {
       d <- d |> filter(study_design      %in% input$design_filter)
     if (!"All" %in% input$population_filter && length(input$population_filter) > 0)
       d <- d |> filter(population_type   %in% input$population_filter)
-    if (!"All" %in% input$age_filter && length(input$age_filter) > 0)
-      d <- d |> filter(population_age %in% input$age_filter)
+    if (!"All" %in% input$age_filter        && length(input$age_filter)        > 0)
+      d <- d |> filter(population_age    %in% input$age_filter)
     if (!"All" %in% input$direction_filter  && length(input$direction_filter)  > 0)
       d <- d |> filter(outcome_direction %in% input$direction_filter)
     d
   })
   
-  # value boxes — kept in server in case UI is uncommented
+  # value boxes (server kept in case UI is uncommented)
   output$n_studies    <- renderText(nrow(filtered()))
   output$n_conditions <- renderText(n_distinct(filtered()$condition))
   output$pct_rct <- renderText({
@@ -191,7 +164,7 @@ server <- function(input, output, session) {
   })
   output$med_sample <- renderText({
     m <- median(filtered()$sample, na.rm = TRUE)
-    if (is.na(m)) "—" else round(m)
+    if (is.na(m)) "N/A" else round(m)
   })
   
   # ── plot 1: stacked bar ───────────────────────────────────────────────────
@@ -203,7 +176,7 @@ server <- function(input, output, session) {
     validate(need(nrow(d) > 0, "No data available for current filters."))
     
     dirs <- c("positive", "mixed", "inconclusive", "negative")
-    p <- plot_ly(type = "bar", orientation = "h")
+    p    <- plot_ly(type = "bar", orientation = "h")
     
     for (dir in dirs) {
       sub <- d |> filter(outcome_direction == dir)
@@ -225,16 +198,33 @@ server <- function(input, output, session) {
       barmode       = "stack",
       paper_bgcolor = "#ffffff",
       plot_bgcolor  = "#ffffff",
-      font    = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-      xaxis   = list(title = "Number of studies", gridcolor = "#edf0f5", zeroline = FALSE),
-      yaxis   = list(title = "", tickfont = list(size = 10)),
-      legend  = list(orientation = "h", x = 0, y = -0.25, bgcolor = "#ffffff",
-                     bordercolor = "#dde2ed", borderwidth = 1, font = list(size = 10)),
-      margin  = list(l = 10, r = 20, t = 10, b = 100)
+      font   = list(color = "#1a1f2e", family = "Source Sans Pro", size = 10),
+      xaxis  = list(
+        title     = list(text = "Number of studies", font = list(size = 10)),
+        gridcolor = "#edf0f5",
+        zeroline  = FALSE,
+        tickfont  = list(size = 9)
+      ),
+      yaxis  = list(
+        title      = "",
+        tickfont   = list(size = 9),
+        automargin = TRUE
+      ),
+      legend = list(
+        orientation   = "h",
+        x             = 0,
+        y             = -0.14,
+        bgcolor       = "#ffffff",
+        bordercolor   = "#dde2ed",
+        borderwidth   = 1,
+        font          = list(size = 9),
+        tracegroupgap = 0
+      ),
+      margin = list(l = 0, r = 10, t = 10, b = 50)
     )
   })
   
-  # ── plot 2: sunburst ─────────────────────────────────────────────────────
+  # ── plot 2: sunburst ──────────────────────────────────────────────────────
   output$sunburst <- renderPlotly({
     df_nested <- bind_rows(
       filtered() |>
@@ -330,9 +320,10 @@ server <- function(input, output, session) {
       paper_bgcolor = "#ffffff",
       plot_bgcolor  = "#ffffff",
       font       = list(color = "#1a1f2e", family = "Source Sans Pro", size = 11),
-      xaxis      = list(title = "Control type", tickangle = -20),
+      xaxis      = list(title = "Control type", tickangle = -20, automargin = TRUE),
       yaxis      = list(title = "Sample size (n)", zeroline = FALSE),
-      showlegend = FALSE
+      showlegend = FALSE,
+      margin     = list(l = 50, r = 20, t = 10, b = 80)
     )
   })
   
@@ -360,10 +351,10 @@ server <- function(input, output, session) {
       rep("#95a5a6", length(designs))
     )
     
-    source1 <- match(d_sankey2$population_age,  node_labels) - 1
-    target1 <- match(d_sankey2$condition,        node_labels) - 1
-    source2 <- match(d_sankey2$condition,        node_labels) - 1
-    target2 <- match(d_sankey2$study_design,     node_labels) - 1
+    source1 <- match(d_sankey2$population_age, node_labels) - 1
+    target1 <- match(d_sankey2$condition,      node_labels) - 1
+    source2 <- match(d_sankey2$condition,      node_labels) - 1
+    target2 <- match(d_sankey2$study_design,   node_labels) - 1
     
     plot_ly(
       type = "sankey",
@@ -379,8 +370,8 @@ server <- function(input, output, session) {
         target = c(target1, target2),
         value  = c(d_sankey2$n, d_sankey2$n),
         label  = c(
-          paste0(d_sankey2$population_age, " → ", d_sankey2$condition, ": ", d_sankey2$n),
-          paste0(d_sankey2$condition, " → ", d_sankey2$study_design, ": ", d_sankey2$n)
+          paste0(d_sankey2$population_age, " -> ", d_sankey2$condition,  ": ", d_sankey2$n),
+          paste0(d_sankey2$condition,      " -> ", d_sankey2$study_design, ": ", d_sankey2$n)
         )
       )
     ) |>
