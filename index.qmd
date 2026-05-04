@@ -1,13 +1,13 @@
 ---
-title: "Project Title"
-subtitle: "INFO 526 - Spring 2025 - Project 01"
-author: 
-  - name: "Team name"
+title: "Red Light Therapy & Mental Health: Mapping the Research Landscape"
+subtitle: "INFO 526 - Spring 2026 - Project 02"
+author:
+  - name: "Vivian Huynh & Levi Hood"
     affiliations:
       - name: "College of Information Science, University of Arizona"
-description: "Project description"
+description: "An interactive Shiny dashboard visualizing the research landscape of photobiomodulation therapy and mental health outcomes across 102 published studies."
 format:
-   html:
+  html:
     code-tools: true
     code-overflow: wrap
     embed-resources: true
@@ -19,4 +19,4 @@ execute:
 
 ## Abstract
 
-Add project abstract here.
+Red light therapy, also known as photobiomodulation (tPBM), has gained widespread attention for a range of claimed health benefits, yet the underlying scientific evidence is rarely presented with meaningful context. This project organizes and visualizes published research on red light therapy and mental health outcomes, providing a clearer picture of what the current science actually supports. Using 102 studies collected from PubMed, ScienceDirect, and Sage Journals via the PICO framework, we built an interactive Shiny dashboard that allows users to explore which mental health conditions are most studied, how results vary across study designs and populations, and where findings are consistent versus mixed or inconclusive. Rather than arguing whether the therapy works, our goal is to map the research landscape honestly — surfacing patterns like publication bias, small sample sizes, and a heavy reliance on open-label pilots — so that viewers can better contextualize how scientific evidence aligns with common claims in this space.
